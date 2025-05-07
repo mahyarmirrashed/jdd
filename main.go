@@ -46,11 +46,19 @@ func main() {
 					projectDir := fmt.Sprintf("%s/%s.%s-project", areaDir, area, project)
 					newPath := filepath.Join(projectDir, filename)
 
+					// Check if the source file still exists
+					if _, err := os.Stat(event.Name); os.IsNotExist(err) {
+						log.Printf("SKIPPED: File already moved/deleted: %s", filename)
+						continue
+					}
+
+					// Create directories
 					if err := os.MkdirAll(projectDir, 0755); err != nil {
 						log.Printf("ERROR creating directory: %v", err)
 						continue
 					}
 
+					// Move the file
 					if err := os.Rename(event.Name, newPath); err != nil {
 						log.Printf("ERROR moving file: %v", err)
 					} else {
