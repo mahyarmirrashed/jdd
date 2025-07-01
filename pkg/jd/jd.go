@@ -9,16 +9,19 @@ import (
 	"strings"
 )
 
-var JohnnyDecimalFilePattern = regexp.MustCompile(`^(\d{2})\.(\d{2})`)
+var JohnnyDecimalFilePattern = regexp.MustCompile(`^(\d{2})\.(\d{2})(\+\S+)?`)
 
 type JohnnyDecimal struct {
-	Area     string // e.g. "10-19"
-	Category string // e.g. "15"
-	ID       string // e.g. "15.23"
+	Area      string // e.g. "10-19"
+	Category  string // e.g. "15"
+	ID        string // e.g. "15.23"
+	Extension string // e.g. "+JEM" or "+0001" (optional)
 }
 
 // Ensure that path for JohnnyDecimal object is created
 func (jd *JohnnyDecimal) EnsureFolders(root string) (string, error) {
+	finalPath := ""
+
 	// Area
 	areaPath, err := findOrCreatePrefixedFolder(root, jd.Area)
 	if err != nil {
@@ -34,7 +37,18 @@ func (jd *JohnnyDecimal) EnsureFolders(root string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("could not ensure ID folder: %w", err)
 	}
-	return idPath, nil
+	// Extension
+	if jd.Extension != "" {
+		extPath, err := findOrCreatePrefixedFolder(idPath, jd.ID+jd.Extension)
+		if err != nil {
+			return "", fmt.Errorf("could not ensure extension folder: %w", err)
+		}
+		finalPath = extPath
+	} else {
+		finalPath = idPath
+	}
+
+	return finalPath, nil
 }
 
 // Return the folder path segments for this JD object
@@ -45,11 +59,16 @@ func (jd *JohnnyDecimal) FolderPath() []string {
 // Parse a filename prefix like "15.23" and return a JohnnyDecimal object
 func Parse(filename string) (*JohnnyDecimal, error) {
 	matches := JohnnyDecimalFilePattern.FindStringSubmatch(filename)
-	if len(matches) != 3 {
+	if len(matches) <= 3 {
 		return nil, fmt.Errorf("filename does not match Johnny Decimal pattern")
 	}
 	category := matches[1]
 	id := fmt.Sprintf("%s.%s", matches[1], matches[2])
+
+	extension := ""
+	if len(matches) >= 4 && matches[3] != "" {
+		extension = matches[3] // includes the "+"
+	}
 
 	firstDigit, err := strconv.Atoi(string(category[0]))
 	if err != nil {
@@ -63,12 +82,20 @@ func Parse(filename string) (*JohnnyDecimal, error) {
 		Area:     area,
 		Category: category,
 		ID:       id,
+
+		Extension: extension,
 	}, nil
 }
 
 // Return a formatted string for debugging
 func (jd *JohnnyDecimal) String() string {
-	return fmt.Sprintf("Area: %s, Category: %s, ID: %s", jd.Area, jd.Category, jd.ID)
+	str := fmt.Sprintf("Area: %s, Category: %s, ID: %s", jd.Area, jd.Category, jd.ID)
+
+	if jd.Extension != "" {
+		str = fmt.Sprintf("%s, Extension: %s", str, jd.Extension)
+	}
+
+	return str
 }
 
 // Checks for a folder in the parent directory that starts with the defined prefix.
