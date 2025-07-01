@@ -16,10 +16,14 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.22'
+      - name: Get version from tag
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
       - name: Build
         run: |
           mkdir -p dist
-          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o dist/jdd-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/daemon
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
+          go build -ldflags "-X 'main.version=${{ env.VERSION }}'" \
+            -o dist/jdd-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/daemon
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
