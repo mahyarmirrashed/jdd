@@ -6,13 +6,15 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Config holds the YAML configuration for the daemon.
 type Config struct {
-	Root     string   `yaml:"root"`
-	LogLevel string   `yaml:"log_level"`
-	Exclude  []string `yaml:"exclude"`
-	DryRun   bool     `yaml:"dry_run"`
+	Root     string   `yaml:"root"`      // Root directory to watch
+	LogLevel string   `yaml:"log_level"` // Logging level: debug, info, warn, error
+	Exclude  []string `yaml:"exclude"`   // Glob patterns to exclude
+	DryRun   bool     `yaml:"dry_run"`   // If true, don't move files
 }
 
+// LoadConfig loads the configuration from the given YAML file.
 func LoadConfig(path string) (*Config, error) {
 	f, err := os.Open(path)
 	if err != nil {
