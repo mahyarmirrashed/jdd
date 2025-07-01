@@ -53,7 +53,7 @@ func main() {
 							return
 						}
 
-						oldPath := filepath.Join(dir, filename)
+						oldPath := event.Name
 						newPath := filepath.Join(destinationDir, filename)
 
 						err = os.Rename(oldPath, newPath)
