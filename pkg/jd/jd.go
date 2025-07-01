@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 var JohnnyDecimalFilePattern = regexp.MustCompile(`^(\d{2})\.(\d{2})`)
@@ -18,13 +19,22 @@ type JohnnyDecimal struct {
 
 // Ensure that path for JohnnyDecimal object is created
 func (jd *JohnnyDecimal) EnsureFolders(root string) (string, error) {
-	// Compose the path: root/area/category/id
-	fullPath := filepath.Join(root, jd.Area, jd.Category, jd.ID)
-	err := os.MkdirAll(fullPath, 0755)
+	// Area
+	areaPath, err := findOrCreatePrefixedFolder(root, jd.Area)
 	if err != nil {
-		return "", fmt.Errorf("could not create folders: %w", err)
+		return "", fmt.Errorf("could not ensure area folder: %w", err)
 	}
-	return fullPath, nil
+	// Category
+	categoryPath, err := findOrCreatePrefixedFolder(areaPath, jd.Category)
+	if err != nil {
+		return "", fmt.Errorf("could not ensure category folder: %w", err)
+	}
+	// ID
+	idPath, err := findOrCreatePrefixedFolder(categoryPath, jd.ID)
+	if err != nil {
+		return "", fmt.Errorf("could not ensure ID folder: %w", err)
+	}
+	return idPath, nil
 }
 
 // Return the folder path segments for this JD object
@@ -59,4 +69,25 @@ func Parse(filename string) (*JohnnyDecimal, error) {
 // Return a formatted string for debugging
 func (jd *JohnnyDecimal) String() string {
 	return fmt.Sprintf("Area: %s, Category: %s, ID: %s", jd.Area, jd.Category, jd.ID)
+}
+
+// Checks for a folder in the parent directory that starts with the defined prefix.
+// If found, returns its path. If not, creates prefix as a folder and returns its path.
+func findOrCreatePrefixedFolder(parentDir, prefix string) (string, error) {
+	entries, err := os.ReadDir(parentDir)
+	if err != nil {
+		return "", err
+	}
+	for _, entry := range entries {
+		if entry.IsDir() && strings.HasPrefix(entry.Name(), prefix) {
+			return filepath.Join(parentDir, entry.Name()), nil
+		}
+	}
+
+	// Not found, create it
+	fullPath := filepath.Join(parentDir, prefix)
+	if err := os.Mkdir(fullPath, 0755); err != nil && !os.IsExist(err) {
+		return "", err
+	}
+	return fullPath, nil
 }
