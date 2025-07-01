@@ -78,7 +78,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	ex, err := excluder.New(cfg.Exclude)
+	ex, err := excluder.New(cfg.Exclude, cfg.Root)
 	if err != nil {
 		log.Fatalf("Failed to compile exclude patterns: %v", err)
 	}
