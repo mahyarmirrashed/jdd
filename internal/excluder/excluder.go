@@ -9,9 +9,9 @@ type Excluder struct {
 	globs []glob.Glob
 }
 
-func NewExcluder(patterns []string) (*Excluder, error) {
 // New creates an Excluder from a list of glob patterns.
 // Patterns use '/' as the path separator.
+func New(patterns []string) (*Excluder, error) {
 	var globs []glob.Glob
 	for _, pat := range patterns {
 		g, err := glob.Compile(pat, '/')
@@ -20,6 +20,7 @@ func NewExcluder(patterns []string) (*Excluder, error) {
 		}
 		globs = append(globs, g)
 	}
+
 	return &Excluder{globs: globs}, nil
 }
 
@@ -30,5 +31,6 @@ func (e *Excluder) IsExcluded(path string) bool {
 			return true
 		}
 	}
+
 	return false
 }
