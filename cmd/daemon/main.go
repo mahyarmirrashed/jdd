@@ -29,6 +29,13 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Initial scan
+	log.Println("Starting initial scan...")
+	if err := initialScan(dir); err != nil {
+		log.Fatalf("Initial scan failed: %v", err)
+	}
+	log.Println("Initial scan complete.")
+
 	go func() {
 		for {
 			select {
@@ -43,13 +50,13 @@ func main() {
 					if jd.JohnnyDecimalFilePattern.MatchString(filename) {
 						johnnyDecimalFile, err := jd.Parse(filename)
 						if err != nil {
-							log.Println("jd parsing error:", err)
+							log.Println("Johnny Decimal parsing error:", err)
 							continue
 						}
 
 						destinationDir, err := johnnyDecimalFile.EnsureFolders(dir)
 						if err != nil {
-							log.Println("error creating folders:", err)
+							log.Println("Error creating folders:", err)
 							return
 						}
 
@@ -58,7 +65,7 @@ func main() {
 
 						err = os.Rename(oldPath, newPath)
 						if err != nil {
-							log.Println("error moving file:", err)
+							log.Println("Error moving file:", err)
 						}
 					}
 				}
@@ -77,4 +84,45 @@ func main() {
 	}
 
 	select {}
+}
+
+func initialScan(root string) error {
+	return filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+
+		filename := d.Name()
+
+		if jd.JohnnyDecimalFilePattern.MatchString(filename) {
+			jdObj, err := jd.Parse(filename)
+			if err != nil {
+				log.Printf("JD parse error for %s: %v", filename, err)
+				return nil
+			}
+
+			destDir, err := jdObj.EnsureFolders(root)
+			if err != nil {
+				log.Printf("Error creating folders for %s: %v", filename, err)
+				return nil
+			}
+
+			oldPath := path
+			newPath := filepath.Join(destDir, filename)
+
+			// Only move if not already in the correct place
+			if oldPath != newPath {
+				err = os.Rename(oldPath, newPath)
+				if err != nil {
+					log.Printf("Error moving %s: %v", filename, err)
+				} else {
+					log.Printf("Moved %s -> %s", oldPath, newPath)
+				}
+			}
+		}
+		return nil
+	})
 }
