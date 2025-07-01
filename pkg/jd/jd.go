@@ -12,10 +12,10 @@ import (
 var JohnnyDecimalFilePattern = regexp.MustCompile(`^(\d{2})\.(\d{2})(\+\S+)?`)
 
 type JohnnyDecimal struct {
-	Area      string // e.g. "10-19"
-	Category  string // e.g. "15"
-	ID        string // e.g. "15.23"
-	Extension string // e.g. "+JEM" or "+0001" (optional)
+	Area     string // e.g. "10-19"
+	Category string // e.g. "15"
+	ID       string // e.g. "15.23"
+	SubID    string // e.g. "+JEM" or "+0001" (optional)
 }
 
 // Ensure that path for JohnnyDecimal object is created
@@ -38,8 +38,8 @@ func (jd *JohnnyDecimal) EnsureFolders(root string) (string, error) {
 		return "", fmt.Errorf("could not ensure ID folder: %w", err)
 	}
 	// Extension
-	if jd.Extension != "" {
-		extPath, err := findOrCreatePrefixedFolder(idPath, jd.ID+jd.Extension)
+	if jd.SubID != "" {
+		extPath, err := findOrCreatePrefixedFolder(idPath, jd.ID+jd.SubID)
 		if err != nil {
 			return "", fmt.Errorf("could not ensure extension folder: %w", err)
 		}
@@ -65,9 +65,9 @@ func Parse(filename string) (*JohnnyDecimal, error) {
 	category := matches[1]
 	id := fmt.Sprintf("%s.%s", matches[1], matches[2])
 
-	extension := ""
+	subid := ""
 	if len(matches) >= 4 && matches[3] != "" {
-		extension = matches[3] // includes the "+"
+		subid = matches[3] // includes the "+"
 	}
 
 	firstDigit, err := strconv.Atoi(string(category[0]))
@@ -82,8 +82,7 @@ func Parse(filename string) (*JohnnyDecimal, error) {
 		Area:     area,
 		Category: category,
 		ID:       id,
-
-		Extension: extension,
+		SubID:    subid,
 	}, nil
 }
 
@@ -91,8 +90,8 @@ func Parse(filename string) (*JohnnyDecimal, error) {
 func (jd *JohnnyDecimal) String() string {
 	str := fmt.Sprintf("Area: %s, Category: %s, ID: %s", jd.Area, jd.Category, jd.ID)
 
-	if jd.Extension != "" {
-		str = fmt.Sprintf("%s, Extension: %s", str, jd.Extension)
+	if jd.SubID != "" {
+		str = fmt.Sprintf("%s, Sub-ID: %s", str, jd.SubID)
 	}
 
 	return str
