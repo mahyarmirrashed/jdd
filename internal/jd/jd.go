@@ -59,7 +59,7 @@ func (jd *JohnnyDecimal) FolderPath() []string {
 // Parse a filename prefix like "15.23" and return a JohnnyDecimal object
 func Parse(filename string) (*JohnnyDecimal, error) {
 	matches := JohnnyDecimalFilePattern.FindStringSubmatch(filename)
-	if len(matches) <= 3 {
+	if len(matches) < 3 {
 		return nil, fmt.Errorf("filename does not match Johnny Decimal pattern")
 	}
 	category := matches[1]
