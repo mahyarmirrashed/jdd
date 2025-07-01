@@ -1,0 +1,21 @@
+# Roadmap
+
+- [x] Graceful shutdown and signal handling
+  - Handle OS signals (e.g., SIGINT, SIGTERM) to gracefully stop the daemon, close watchers, and clean up resources
+- [x] Configuration support
+  - Allow configuring the watched directory, logging level, or other options via a config file or environment variables
+- [x] Logging enhancements
+  - Add structured logging with timestamps and log levels (info, warning, error) to help with debugging and monitoring
+- [x] Error handling and recovery
+  - Improve error handling so that transient errors (e.g., temporary file access issues) don’t crash the daemon
+- [x] Initial scan on startup
+  - Perform an initial scan of the watched directory on startup to organize any existing files that match the Johnny Decimal pattern
+- [ ] Unit and integration tests
+  - Add tests for your parsing, folder creation, and watcher logic to ensure reliability during future changes
+- [ ] Cross-platform capability
+  - Test and ensure the daemon works on different OSes if needed
+- [x] Daemonization and service integration
+  - Use a library like `go-daemon` to run your daemon as a background service
+- [ ] User feedback and notifications
+  - Notify users on file moves or errors via desktop notifications or logs
+  - Via something like `"github.com/gen2brain/beeep"`
