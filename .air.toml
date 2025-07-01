@@ -40,7 +40,7 @@ tmp_dir = "tmp"
   time = false
 
 [misc]
-  clean_on_exit = false
+  clean_on_exit = true
 
 [proxy]
   app_port = 0
