@@ -32,6 +32,22 @@ go run ./cmd/daemon
 JDD_CONFIG=./tmp/.jd.yaml go run ./cmd/daemon
 ```
 
+## Installation
+
+If you use [Nix](https://nixos.org/), you can install JDD with:
+
+```sh
+nix-shell -p jdd
+```
+
+Or add it to your environment:
+
+```sh
+nix-env -iA nixpkgs.jdd
+```
+
+You can also download pre-built binaries from the [GitHub Releases page](https://github.com/mahyarmirrashed/jdd/releases).
+
 ## Notes
 
 - By default, the daemon watches the directory specified in `root`, resolved relative to the config file’s location.
