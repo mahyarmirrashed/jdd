@@ -3,18 +3,41 @@ package main
 import (
 	"log"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 
 	"github.com/farmergreg/rfsnotify"
 	"github.com/mahyarmirrashed/jdd/internal/config"
 	"github.com/mahyarmirrashed/jdd/internal/excluder"
-	"github.com/mahyarmirrashed/jdd/internal/jd"
+	"github.com/sevlyar/go-daemon"
 	"gopkg.in/fsnotify.v1"
 )
 
 func main() {
-	configPath := ".jd.yaml"
+	// Daemon context setup
+	ctx := &daemon.Context{
+		PidFileName: "jdd.pid",
+		PidFilePerm: 0644,
+		LogFileName: "jdd.log",
+		LogFilePerm: 0640,
+		WorkDir:     "./",
+		Umask:       027,
+		Args:        []string{"[jdd-daemon]"},
+	}
 
+	d, err := ctx.Reborn()
+	if err != nil {
+		log.Fatalf("Unable to run: %s", err)
+	}
+	if d != nil {
+		return // Parent process exits
+	}
+	defer ctx.Release()
+
+	log.Println("Daemon started")
+
+	configPath := ".jd.yaml"
 	cfg, err := config.LoadConfig(configPath)
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
@@ -33,10 +56,33 @@ func main() {
 		log.Fatal(err)
 	}
 
-	ex, err := excluder.NewExcluder(cfg.Exclude)
+	ex, err := excluder.New(cfg.Exclude)
 	if err != nil {
 		log.Fatalf("Failed to compile exclude patterns: %v", err)
 	}
+
+	// Signal handling for graceful shutdown
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		sig := <-signals
+		log.Printf("Received signal: %s, shutting down...", sig)
+
+		// Close watcher
+		if watcher != nil {
+			if err := watcher.Close(); err != nil {
+				log.Printf("Error closing watcher: %v", err)
+			}
+		}
+		// Remove PID file
+		if err := os.Remove("jdd.pid"); err != nil && !os.IsNotExist(err) {
+			log.Printf("Error removing PID file: %v", err)
+		}
+
+		log.Println("Cleanup complete. Exiting.")
+		os.Exit(0)
+	}()
 
 	// Initial scan
 	log.Println("Starting initial scan...")
@@ -45,6 +91,7 @@ func main() {
 	}
 	log.Println("Initial scan complete.")
 
+	// Main event handler loop
 	go func() {
 		for {
 			select {
@@ -54,37 +101,7 @@ func main() {
 				}
 
 				if event.Op == fsnotify.Create {
-					filename := filepath.Base(event.Name)
-
-					if ex.IsExcluded(event.Name) {
-						continue
-					}
-
-					if jd.JohnnyDecimalFilePattern.MatchString(filename) {
-						johnnyDecimalFile, err := jd.Parse(filename)
-						if err != nil {
-							log.Println("Johnny Decimal parsing error:", err)
-							continue
-						}
-
-						destinationDir, err := johnnyDecimalFile.EnsureFolders(dir)
-						if err != nil {
-							log.Println("Error creating folders:", err)
-							return
-						}
-
-						oldPath := event.Name
-						newPath := filepath.Join(destinationDir, filename)
-
-						if !cfg.DryRun {
-							err = os.Rename(oldPath, newPath)
-							if err != nil {
-								log.Println("Error moving file:", err)
-							}
-						} else {
-							log.Printf("[dry run] Would move %s -> %s", oldPath, newPath)
-						}
-					}
+					processFile(event.Name, dir, cfg, ex)
 				}
 			case err, ok := <-watcher.Errors:
 				if !ok {
@@ -109,41 +126,11 @@ func initialScan(root string, cfg *config.Config, ex *excluder.Excluder) error {
 			return err
 		}
 
-		if d.IsDir() || ex.IsExcluded(d.Name()) {
+		if d.IsDir() {
 			return nil
 		}
 
-		filename := d.Name()
-
-		if jd.JohnnyDecimalFilePattern.MatchString(filename) {
-			jdObj, err := jd.Parse(filename)
-			if err != nil {
-				log.Printf("JD parse error for %s: %v", filename, err)
-				return nil
-			}
-
-			destDir, err := jdObj.EnsureFolders(root)
-			if err != nil {
-				log.Printf("Error creating folders for %s: %v", filename, err)
-				return nil
-			}
-
-			oldPath := path
-			newPath := filepath.Join(destDir, filename)
-
-			if oldPath != newPath {
-				if !cfg.DryRun {
-					err = os.Rename(oldPath, newPath)
-					if err != nil {
-						log.Printf("Error moving %s: %v", filename, err)
-					} else {
-						log.Printf("Moved %s -> %s", oldPath, newPath)
-					}
-				} else {
-					log.Printf("[dry run] Would move %s -> %s", oldPath, newPath)
-				}
-			}
-		}
+		processFile(path, root, cfg, ex)
 		return nil
 	})
 }
