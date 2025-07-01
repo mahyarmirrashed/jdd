@@ -43,8 +43,12 @@ func LoadConfig(path string) (*Config, error) {
 
 	// Resolve root path relative to config file location if not absolute
 	if !filepath.IsAbs(cfg.Root) {
-		configDir := filepath.Dir(path)
-		cfg.Root = filepath.Join(configDir, cfg.Root)
+		cfg.Root = filepath.Join(filepath.Dir(path), cfg.Root)
+	}
+
+	cfg.Root, err = filepath.Abs(cfg.Root)
+	if err != nil {
+		return nil, err
 	}
 
 	return &cfg, nil
