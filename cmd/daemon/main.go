@@ -6,8 +6,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/fsnotify/fsnotify"
+	"github.com/farmergreg/rfsnotify"
 	"github.com/mahyarmirrashed/jdd/pkg/jd"
+	"gopkg.in/fsnotify.v1"
 )
 
 func main() {
@@ -17,11 +18,16 @@ func main() {
 	}
 	dir := os.Args[1]
 
-	watcher, err := fsnotify.NewWatcher()
+	watcher, err := rfsnotify.NewWatcher()
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer watcher.Close()
+
+	err = watcher.AddRecursive(dir)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	go func() {
 		for {
@@ -43,7 +49,7 @@ func main() {
 
 						destinationDir, err := johnnyDecimalFile.EnsureFolders(dir)
 						if err != nil {
-							log.Println("Error creating folders:", err)
+							log.Println("error creating folders:", err)
 							return
 						}
 
@@ -52,7 +58,7 @@ func main() {
 
 						err = os.Rename(oldPath, newPath)
 						if err != nil {
-							log.Println("Error moving file:", err)
+							log.Println("error moving file:", err)
 						}
 					}
 				}
