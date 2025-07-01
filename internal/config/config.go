@@ -27,5 +27,17 @@ func LoadConfig(path string) (*Config, error) {
 	if err := decoder.Decode(&cfg); err != nil {
 		return nil, err
 	}
+
+	// Set defaults
+	if cfg.LogLevel == "" {
+		cfg.LogLevel = "info"
+	}
+	if cfg.Exclude == nil {
+		cfg.Exclude = []string{}
+	}
+	if cfg.Root == "" {
+		cfg.Root = "."
+	}
+
 	return &cfg, nil
 }
