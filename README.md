@@ -6,13 +6,31 @@ A background tool that watches a directory and automatically organizes files acc
 
 - **Watches a directory tree** for new files.
 - **Moves files** into the correct Johnny Decimal folders based on filename.
-- **Configurable** via YAML file (`.jd.yaml` by default, or set with the `JDD_CONFIG` environment variable).
+- **Fully configurable** via command line arguments, environment variables, or an optional YAML config file (`.jd.yaml` by default).
 - **Exclusion patterns** and dry-run mode supported.
 - **Runs as a daemon or in the foreground** (configurable).
 
 ## Quick Start
 
-1. **Create a config file** (example: `.jd.yaml`):
+You can run the daemon with **just command line flags or environment variables**. A config is not required.
+
+### Example: Run with command line flags
+
+```sh
+jdd --root ~/Documents --log-level debug --dry-run
+```
+
+### Example: Run with environment variables
+
+```sh
+export JDD_ROOT=~/Documents
+export JDD_LOG_LEVEL=info
+jdd
+```
+
+### Example: Run with a config file (optional)
+
+Create a config file (e.g., `.jd.yaml`):
 
 ```yaml
 root: "." # Directory to watch (relative to config file location)
@@ -24,13 +42,13 @@ dry_run: false # If true, no files will be moved
 daemonize: false # Run in foreground (set to true to daemonize)
 ```
 
-2. **Run the daemon:**
+Then run:
 
 ```sh
-go run ./cmd/daemon
-# or specify a config file:
-JDD_CONFIG=./tmp/.jd.yaml go run ./cmd/daemon
+jdd --config .jd.yaml
 ```
+
+Or let it pick up the default `.jd.yaml` in the current directory.
 
 ## Installation
 
@@ -50,6 +68,7 @@ You can also download pre-built binaries from the [GitHub Releases page](https:/
 
 ## Notes
 
-- By default, the daemon watches the directory specified in `root`, resolved relative to the config file’s location.
+- The config file is **optional**&mdash;all settings can be provided via CLI flags or environment variables.
+- By default, the daemon watches the directory specified in `root`, resolved relative to the config file’s location (if used), or as given by the flag/env.
 - Exclude patterns use glob syntax.
 - Log output goes to `jdd.log` if daemonized, otherwise to stdout.
