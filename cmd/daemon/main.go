@@ -120,6 +120,7 @@ func main() {
 	select {}
 }
 
+// initialScan walks the entire directory and ensures Johnny Decimal adherence.
 func initialScan(root string, cfg *config.Config, ex *excluder.Excluder) error {
 	return filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
