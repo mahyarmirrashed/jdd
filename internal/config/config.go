@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"path/filepath"
 
 	"gopkg.in/yaml.v3"
 )
@@ -38,6 +39,12 @@ func LoadConfig(path string) (*Config, error) {
 	}
 	if cfg.Root == "" {
 		cfg.Root = "."
+	}
+
+	// Resolve root path relative to config file location if not absolute
+	if !filepath.IsAbs(cfg.Root) {
+		configDir := filepath.Dir(path)
+		cfg.Root = filepath.Join(configDir, cfg.Root)
 	}
 
 	return &cfg, nil
