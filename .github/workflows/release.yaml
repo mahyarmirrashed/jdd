@@ -20,10 +20,24 @@ jobs:
         run: |
           mkdir -p dist
           GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o dist/jdd-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/daemon
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: jdd-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/jdd-${{ matrix.goos }}-${{ matrix.goarch }}
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: dist/jdd-*
+          files: dist/**/jdd-*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
