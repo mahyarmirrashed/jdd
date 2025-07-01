@@ -15,7 +15,12 @@ import (
 )
 
 func main() {
-	configPath := ".jd.yaml"
+	// Allow config path override via environment variable
+	configPath := os.Getenv("JDD_CONFIG")
+	if configPath == "" {
+		configPath = ".jd.yaml"
+	}
+
 	cfg, err := config.LoadConfig(configPath)
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
