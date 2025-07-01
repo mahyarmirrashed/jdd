@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -11,6 +10,7 @@ import (
 	"github.com/mahyarmirrashed/jdd/internal/config"
 	"github.com/mahyarmirrashed/jdd/internal/excluder"
 	"github.com/sevlyar/go-daemon"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/fsnotify.v1"
 )
 
@@ -35,12 +35,26 @@ func main() {
 	}
 	defer ctx.Release()
 
-	log.Println("Daemon started")
+	log.Info("Daemon started")
 
 	configPath := ".jd.yaml"
 	cfg, err := config.LoadConfig(configPath)
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
+	}
+
+	// Set log level from config
+	switch cfg.LogLevel {
+	case "debug":
+		log.SetLevel(log.DebugLevel)
+	case "info":
+		log.SetLevel(log.InfoLevel)
+	case "warn":
+		log.SetLevel(log.WarnLevel)
+	case "error":
+		log.SetLevel(log.ErrorLevel)
+	default:
+		log.SetLevel(log.InfoLevel)
 	}
 
 	dir := cfg.Root
@@ -67,29 +81,29 @@ func main() {
 
 	go func() {
 		sig := <-signals
-		log.Printf("Received signal: %s, shutting down...", sig)
+		log.Infof("Received signal: %s, shutting down...", sig)
 
 		// Close watcher
 		if watcher != nil {
 			if err := watcher.Close(); err != nil {
-				log.Printf("Error closing watcher: %v", err)
+				log.Warnf("Error closing watcher: %v", err)
 			}
 		}
 		// Remove PID file
 		if err := os.Remove("jdd.pid"); err != nil && !os.IsNotExist(err) {
-			log.Printf("Error removing PID file: %v", err)
+			log.Warnf("Error removing PID file: %v", err)
 		}
 
-		log.Println("Cleanup complete. Exiting.")
+		log.Info("Cleanup complete. Exiting.")
 		os.Exit(0)
 	}()
 
 	// Initial scan
-	log.Println("Starting initial scan...")
+	log.Info("Starting initial scan...")
 	if err := initialScan(dir, cfg, ex); err != nil {
 		log.Fatalf("Initial scan failed: %v", err)
 	}
-	log.Println("Initial scan complete.")
+	log.Info("Initial scan complete.")
 
 	// Main event handler loop
 	go func() {
@@ -107,7 +121,7 @@ func main() {
 				if !ok {
 					return
 				}
-				log.Println("error:", err)
+				log.Error("error:", err)
 			}
 		}
 	}()
