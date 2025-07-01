@@ -15,28 +15,6 @@ import (
 )
 
 func main() {
-	// Daemon context setup
-	ctx := &daemon.Context{
-		PidFileName: "jdd.pid",
-		PidFilePerm: 0644,
-		LogFileName: "jdd.log",
-		LogFilePerm: 0640,
-		WorkDir:     "./",
-		Umask:       027,
-		Args:        []string{"[jdd-daemon]"},
-	}
-
-	d, err := ctx.Reborn()
-	if err != nil {
-		log.Fatalf("Unable to run: %s", err)
-	}
-	if d != nil {
-		return // Parent process exits
-	}
-	defer ctx.Release()
-
-	log.Info("Daemon started")
-
 	configPath := ".jd.yaml"
 	cfg, err := config.LoadConfig(configPath)
 	if err != nil {
@@ -55,6 +33,31 @@ func main() {
 		log.SetLevel(log.ErrorLevel)
 	default:
 		log.SetLevel(log.InfoLevel)
+	}
+
+	// Only daemonize if config says so
+	if cfg.Daemonize {
+		ctx := &daemon.Context{
+			PidFileName: "jdd.pid",
+			PidFilePerm: 0644,
+			LogFileName: "jdd.log",
+			LogFilePerm: 0640,
+			WorkDir:     "./",
+			Umask:       027,
+			Args:        []string{"[jdd-daemon]"},
+		}
+
+		d, err := ctx.Reborn()
+		if err != nil {
+			log.Fatalf("Unable to run: %s", err)
+		}
+		if d != nil {
+			return // Parent process exits
+		}
+		defer ctx.Release()
+		log.Info("Daemon started")
+	} else {
+		log.Info("Running in foreground (not daemonized)")
 	}
 
 	dir := cfg.Root
@@ -89,9 +92,11 @@ func main() {
 				log.Warnf("Error closing watcher: %v", err)
 			}
 		}
-		// Remove PID file
-		if err := os.Remove("jdd.pid"); err != nil && !os.IsNotExist(err) {
-			log.Warnf("Error removing PID file: %v", err)
+		// Remove PID file if daemonized
+		if cfg.Daemonize {
+			if err := os.Remove("jdd.pid"); err != nil && !os.IsNotExist(err) {
+				log.Warnf("Error removing PID file: %v", err)
+			}
 		}
 
 		log.Info("Cleanup complete. Exiting.")
