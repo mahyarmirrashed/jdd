@@ -1,22 +1,26 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 
 	"github.com/farmergreg/rfsnotify"
-	"github.com/mahyarmirrashed/jdd/pkg/jd"
+	"github.com/mahyarmirrashed/jdd/internal/config"
+	"github.com/mahyarmirrashed/jdd/internal/excluder"
+	"github.com/mahyarmirrashed/jdd/internal/jd"
 	"gopkg.in/fsnotify.v1"
 )
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("Usage: daemon <directory>")
-		os.Exit(1)
+	configPath := ".jd.yaml"
+
+	cfg, err := config.LoadConfig(configPath)
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
 	}
-	dir := os.Args[1]
+
+	dir := cfg.Root
 
 	watcher, err := rfsnotify.NewWatcher()
 	if err != nil {
@@ -29,9 +33,14 @@ func main() {
 		log.Fatal(err)
 	}
 
+	ex, err := excluder.NewExcluder(cfg.Exclude)
+	if err != nil {
+		log.Fatalf("Failed to compile exclude patterns: %v", err)
+	}
+
 	// Initial scan
 	log.Println("Starting initial scan...")
-	if err := initialScan(dir); err != nil {
+	if err := initialScan(dir, cfg, ex); err != nil {
 		log.Fatalf("Initial scan failed: %v", err)
 	}
 	log.Println("Initial scan complete.")
@@ -46,6 +55,10 @@ func main() {
 
 				if event.Op == fsnotify.Create {
 					filename := filepath.Base(event.Name)
+
+					if ex.IsExcluded(event.Name) {
+						continue
+					}
 
 					if jd.JohnnyDecimalFilePattern.MatchString(filename) {
 						johnnyDecimalFile, err := jd.Parse(filename)
@@ -63,9 +76,13 @@ func main() {
 						oldPath := event.Name
 						newPath := filepath.Join(destinationDir, filename)
 
-						err = os.Rename(oldPath, newPath)
-						if err != nil {
-							log.Println("Error moving file:", err)
+						if !cfg.DryRun {
+							err = os.Rename(oldPath, newPath)
+							if err != nil {
+								log.Println("Error moving file:", err)
+							}
+						} else {
+							log.Printf("[dry run] Would move %s -> %s", oldPath, newPath)
 						}
 					}
 				}
@@ -86,12 +103,13 @@ func main() {
 	select {}
 }
 
-func initialScan(root string) error {
+func initialScan(root string, cfg *config.Config, ex *excluder.Excluder) error {
 	return filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if d.IsDir() {
+
+		if d.IsDir() || ex.IsExcluded(d.Name()) {
 			return nil
 		}
 
@@ -113,13 +131,16 @@ func initialScan(root string) error {
 			oldPath := path
 			newPath := filepath.Join(destDir, filename)
 
-			// Only move if not already in the correct place
 			if oldPath != newPath {
-				err = os.Rename(oldPath, newPath)
-				if err != nil {
-					log.Printf("Error moving %s: %v", filename, err)
+				if !cfg.DryRun {
+					err = os.Rename(oldPath, newPath)
+					if err != nil {
+						log.Printf("Error moving %s: %v", filename, err)
+					} else {
+						log.Printf("Moved %s -> %s", oldPath, newPath)
+					}
 				} else {
-					log.Printf("Moved %s -> %s", oldPath, newPath)
+					log.Printf("[dry run] Would move %s -> %s", oldPath, newPath)
 				}
 			}
 		}
