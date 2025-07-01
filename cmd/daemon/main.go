@@ -40,7 +40,6 @@ func main() {
 							log.Println("jd parsing error:", err)
 							continue
 						}
-						fmt.Println(johnnyDecimalFile.String())
 
 						destinationDir, err := johnnyDecimalFile.EnsureFolders(dir)
 						if err != nil {
@@ -50,6 +49,7 @@ func main() {
 
 						oldPath := filepath.Join(dir, filename)
 						newPath := filepath.Join(destinationDir, filename)
+
 						err = os.Rename(oldPath, newPath)
 						if err != nil {
 							log.Println("Error moving file:", err)
