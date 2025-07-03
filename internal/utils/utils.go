@@ -37,16 +37,18 @@ func ProcessFile(fullPath string, root string, cfg *config.Config, ex *excluder.
 		oldPath := fullPath
 		newPath := filepath.Join(destDir, filename)
 
+		prettyPath := func(path string) string { return filepath.ToSlash(path) }
+
 		if oldPath != newPath {
 			if !cfg.DryRun {
 				err = os.Rename(oldPath, newPath)
 				if err != nil {
 					log.Errorf("Error moving %s: %v", filename, err)
 				} else {
-					log.Infof("Moved %s -> %s", oldPath, newPath)
+					log.Infof("Moved %s -> %s", prettyPath(oldPath), prettyPath(newPath))
 				}
 			} else {
-				log.Infof("[dry run] Would move %s -> %s", oldPath, newPath)
+				log.Infof("[dry run] Would move %s -> %s", prettyPath(oldPath), prettyPath(newPath))
 			}
 		}
 		return true
