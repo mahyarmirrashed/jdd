@@ -5,3 +5,4 @@ exclude:
   - "tmp/**"
 dry_run: false
 daemonize: false
+notifications: true

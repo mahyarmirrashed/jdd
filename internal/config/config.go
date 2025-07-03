@@ -10,12 +10,13 @@ import (
 
 // Config holds the YAML configuration for the daemon.
 type Config struct {
-	Root      string        `yaml:"root"`      // Root directory to watch
-	LogLevel  string        `yaml:"log_level"` // Logging level: debug, info, warn, error
-	Exclude   []string      `yaml:"exclude"`   // Glob patterns to exclude
-	DryRun    bool          `yaml:"dry_run"`   // If true, don't move files
-	Daemonize bool          `yaml:"daemonize"` // If true, run as daemon; if false, run in foreground
-	Delay     time.Duration `yaml:"delay"`     // Time before before processing files
+	Root          string        `yaml:"root"`          // Root directory to watch
+	LogLevel      string        `yaml:"log_level"`     // Logging level: debug, info, warn, error
+	Exclude       []string      `yaml:"exclude"`       // Glob patterns to exclude
+	DryRun        bool          `yaml:"dry_run"`       // If true, don't move files
+	Daemonize     bool          `yaml:"daemonize"`     // If true, run as daemon; if false, run in foreground
+	Delay         time.Duration `yaml:"delay"`         // Time before before processing files
+	Notifications bool          `yaml:"notifications"` // If true, send desktop notifications
 }
 
 // LoadConfig loads the configuration from the given YAML file.

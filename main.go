@@ -66,6 +66,11 @@ func main() {
 				Sources: cli.EnvVars("JDD_DELAY"),
 				Value:   0,
 			},
+			&cli.BoolFlag{
+				Name:    "notifications",
+				Usage:   "send desktop notifications",
+				Sources: cli.EnvVars("JDD_NOTIFICATIONS"),
+			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			var cfg *config.Config
@@ -108,6 +113,9 @@ func main() {
 			}
 			if cmd.IsSet("delay") {
 				cfg.Delay = cmd.Duration("delay")
+			}
+			if cmd.IsSet("notifications") {
+				cfg.Notifications = cmd.Bool("notifications")
 			}
 
 			// Set log level from config

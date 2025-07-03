@@ -1,9 +1,11 @@
 package utils
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
+	"github.com/gen2brain/beeep"
 	"github.com/mahyarmirrashed/jdd/internal/config"
 	"github.com/mahyarmirrashed/jdd/internal/excluder"
 	"github.com/mahyarmirrashed/jdd/internal/jd"
@@ -43,16 +45,33 @@ func ProcessFile(fullPath string, root string, cfg *config.Config, ex *excluder.
 			if !cfg.DryRun {
 				err = os.Rename(oldPath, newPath)
 				if err != nil {
-					log.Errorf("Error moving %s: %v", filename, err)
+					out := fmt.Sprintf("Error moving %s: %v", filename, err)
+					// Log and send notification
+					log.Error(out)
+					sendNotification(cfg.Notifications, "JDD", out)
 				} else {
-					log.Infof("Moved %s -> %s", prettyPath(oldPath), prettyPath(newPath))
+					out := fmt.Sprintf("Moved %s -> %s", prettyPath(oldPath), prettyPath(newPath))
+					// Log and send notification
+					log.Info(out)
+					sendNotification(cfg.Notifications, "JDD", out)
 				}
 			} else {
-				log.Infof("[dry run] Would move %s -> %s", prettyPath(oldPath), prettyPath(newPath))
+				out := fmt.Sprintf("[dry run] Would move %s -> %s", prettyPath(oldPath), prettyPath(newPath))
+				// Log and send notification
+				log.Info(out)
+				sendNotification(cfg.Notifications, "JDD", out)
 			}
 		}
 		return true
 	}
 
 	return false
+}
+
+func sendNotification(enabled bool, title string, message string) {
+	if enabled {
+		if err := beeep.Notify(title, message, ""); err != nil {
+			log.Warnf("Notification failed: %v", err)
+		}
+	}
 }
