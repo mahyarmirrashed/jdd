@@ -40,6 +40,7 @@ exclude:
   - "tmp/**"
 dry_run: false # If true, no files will be moved
 daemonize: false # Run in foreground (set to true to daemonize)
+delay: 1s # Duration to wait before processing new files
 ```
 
 Then run:

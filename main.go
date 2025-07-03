@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/farmergreg/rfsnotify"
 	"github.com/mahyarmirrashed/jdd/internal/config"
@@ -59,6 +60,12 @@ func main() {
 				Usage:   "glob patterns to exclude (repeat or comma-separated)",
 				Sources: cli.EnvVars("JDD_EXCLUDE"),
 			},
+			&cli.DurationFlag{
+				Name:    "delay",
+				Usage:   "processing delay on files",
+				Sources: cli.EnvVars("JDD_DELAY"),
+				Value:   0,
+			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			var cfg *config.Config
@@ -98,6 +105,9 @@ func main() {
 					merged = append(merged, strings.Split(e, ",")...)
 				}
 				cfg.Exclude = merged
+			}
+			if cmd.IsSet("delay") {
+				cfg.Delay = cmd.Duration("delay")
 			}
 
 			// Set log level from config
@@ -196,6 +206,11 @@ func main() {
 							return
 						}
 						if event.Op == fsnotify.Create {
+							// Delay addresses an issue with Windows File Explorer
+							if cfg.Delay > 0 {
+								time.Sleep(cfg.Delay)
+							}
+
 							utils.ProcessFile(event.Name, dir, cfg, ex)
 						}
 					case err, ok := <-watcher.Errors:
@@ -206,11 +221,6 @@ func main() {
 					}
 				}
 			}()
-
-			err = watcher.Add(dir)
-			if err != nil {
-				log.Fatal(err)
-			}
 
 			select {}
 		},
