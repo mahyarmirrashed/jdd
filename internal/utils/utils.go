@@ -1,4 +1,4 @@
-package main
+package utils
 
 import (
 	"os"
@@ -10,10 +10,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// processFile checks if the filename matches the Johnny Decimal pattern,
+// ProcessFile checks if the filename matches the Johnny Decimal pattern,
 // ensures the correct folder structure, and moves the file if needed.
 // Returns true if the file was processed.
-func processFile(fullPath string, root string, cfg *config.Config, ex *excluder.Excluder) bool {
+func ProcessFile(fullPath string, root string, cfg *config.Config, ex *excluder.Excluder) bool {
 	filename := filepath.Base(fullPath)
 
 	if ex.IsExcluded(fullPath) {

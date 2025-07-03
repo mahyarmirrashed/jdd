@@ -23,7 +23,7 @@ jobs:
           mkdir -p dist
           GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
           go build -ldflags "-X 'main.version=${{ env.VERSION }}'" \
-            -o dist/jdd-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/daemon
+            -o dist/jdd-${{ matrix.goos }}-${{ matrix.goarch }}
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:

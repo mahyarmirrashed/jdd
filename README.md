@@ -52,6 +52,8 @@ Or let it pick up the default `.jd.yaml` in the current directory.
 
 ## Installation
 
+### Install with Nix
+
 If you use [Nix](https://nixos.org/), you can install JDD with:
 
 ```sh
@@ -63,6 +65,16 @@ Or add it to your environment:
 ```sh
 nix-env -iA nixpkgs.jdd
 ```
+
+### Install with Go
+
+If you have Go 1.17+ installed, you can install JDD directly from the command line:
+
+```sh
+go install github.com/mahyarmirrashed/jdd@latest
+```
+
+### Pre-built Binaries
 
 You can also download pre-built binaries from the [GitHub Releases page](https://github.com/mahyarmirrashed/jdd/releases).
 

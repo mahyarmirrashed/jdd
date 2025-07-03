@@ -11,6 +11,7 @@ import (
 	"github.com/farmergreg/rfsnotify"
 	"github.com/mahyarmirrashed/jdd/internal/config"
 	"github.com/mahyarmirrashed/jdd/internal/excluder"
+	"github.com/mahyarmirrashed/jdd/internal/utils"
 	"github.com/sevlyar/go-daemon"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v3"
@@ -195,7 +196,7 @@ func main() {
 							return
 						}
 						if event.Op == fsnotify.Create {
-							processFile(event.Name, dir, cfg, ex)
+							utils.ProcessFile(event.Name, dir, cfg, ex)
 						}
 					case err, ok := <-watcher.Errors:
 						if !ok {
@@ -231,7 +232,7 @@ func initialScan(root string, cfg *config.Config, ex *excluder.Excluder) error {
 			return nil
 		}
 
-		processFile(path, root, cfg, ex)
+		utils.ProcessFile(path, root, cfg, ex)
 		return nil
 	})
 }
