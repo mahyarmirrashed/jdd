@@ -58,18 +58,8 @@ func main() {
 				Usage:   "Glob patterns to exclude (repeat or comma-separated)",
 				Sources: cli.EnvVars("JDD_EXCLUDE"),
 			},
-			&cli.BoolFlag{
-				Name:    "version",
-				Aliases: []string{"V"},
-				Usage:   "Show version and exit",
-			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
-			if cmd.Bool("version") {
-				cli.ShowVersion(cmd)
-				return nil
-			}
-
 			var cfg *config.Config
 			configPath := cmd.String("config")
 
