@@ -12,10 +12,10 @@
   - Perform an initial scan of the watched directory on startup to organize any existing files that match the Johnny Decimal pattern
 - [ ] Unit and integration tests
   - Add tests for your parsing, folder creation, and watcher logic to ensure reliability during future changes
-- [ ] Cross-platform capability
+- [x] Cross-platform capability
   - Test and ensure the daemon works on different OSes if needed
 - [x] Daemonization and service integration
   - Use a library like `go-daemon` to run your daemon as a background service
-- [ ] User feedback and notifications
+- [x] User feedback and notifications
   - Notify users on file moves or errors via desktop notifications or logs
   - Via something like `"github.com/gen2brain/beeep"`
