@@ -1,6 +1,7 @@
 package utils
 
 import (
+	_ "embed"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,6 +12,9 @@ import (
 	"github.com/mahyarmirrashed/jdd/internal/jd"
 	log "github.com/sirupsen/logrus"
 )
+
+//go:embed logo.png
+var icon []byte
 
 // ProcessFile checks if the filename matches the Johnny Decimal pattern,
 // ensures the correct folder structure, and moves the file if needed.
@@ -70,7 +74,7 @@ func ProcessFile(fullPath string, root string, cfg *config.Config, ex *excluder.
 
 func sendNotification(enabled bool, title string, message string) {
 	if enabled {
-		if err := beeep.Notify(title, message, ""); err != nil {
+		if err := beeep.Notify(title, message, icon); err != nil {
 			log.Warnf("Notification failed: %v", err)
 		}
 	}
