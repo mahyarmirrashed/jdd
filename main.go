@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/farmergreg/rfsnotify"
+	"github.com/gen2brain/beeep"
 	"github.com/mahyarmirrashed/jdd/internal/config"
 	"github.com/mahyarmirrashed/jdd/internal/excluder"
 	"github.com/mahyarmirrashed/jdd/internal/utils"
@@ -23,6 +24,8 @@ import (
 var version = "dev"
 
 func main() {
+	beeep.AppName = "Johnny Decimal Daemon"
+
 	app := &cli.Command{
 		Name:    "jdd",
 		Usage:   "Johnny Decimal Daemon",
