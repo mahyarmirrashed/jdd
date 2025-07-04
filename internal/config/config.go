@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/mahyarmirrashed/jdd/internal/utils"
 	"gopkg.in/yaml.v3"
 )
 
@@ -43,6 +44,9 @@ func LoadConfig(path string) (*Config, error) {
 	if cfg.Root == "" {
 		cfg.Root = "."
 	}
+
+	// Expand tilde in root path
+	cfg.Root = utils.ExpandTilde(cfg.Root)
 
 	// Resolve root path relative to config file location if not absolute
 	if !filepath.IsAbs(cfg.Root) {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 	"github.com/gen2brain/beeep"
 	"github.com/mahyarmirrashed/jdd/internal/config"
 	"github.com/mahyarmirrashed/jdd/internal/excluder"
+	"github.com/mahyarmirrashed/jdd/internal/jd"
 	"github.com/mahyarmirrashed/jdd/internal/utils"
 	"github.com/sevlyar/go-daemon"
 	log "github.com/sirupsen/logrus"
@@ -160,7 +162,7 @@ func main() {
 				log.Info("Running in foreground (not daemonized)")
 			}
 
-			dir := cfg.Root
+			dir := utils.ExpandTilde(cfg.Root)
 
 			watcher, err := rfsnotify.NewWatcher()
 			if err != nil {
@@ -222,7 +224,7 @@ func main() {
 								time.Sleep(cfg.Delay)
 							}
 
-							utils.ProcessFile(event.Name, dir, cfg, ex)
+							processFile(event.Name, dir, cfg, ex)
 						}
 					case err, ok := <-watcher.Errors:
 						if !ok {
@@ -242,6 +244,62 @@ func main() {
 	}
 }
 
+// processFile checks if the filename matches the Johnny Decimal pattern,
+// ensures the correct folder structure, and moves the file if needed.
+// Returns true if the file was processed.
+func processFile(fullPath string, root string, cfg *config.Config, ex *excluder.Excluder) bool {
+	filename := filepath.Base(fullPath)
+
+	if ex.IsExcluded(fullPath) {
+		log.Debugf("Excluded: %s", fullPath)
+		return false
+	}
+
+	if jd.JohnnyDecimalFilePattern.MatchString(filename) {
+		jdObj, err := jd.Parse(filename)
+		if err != nil {
+			log.Warnf("Johnny Decimal parsing error: %v", err)
+			return false
+		}
+
+		destDir, err := jdObj.EnsureFolders(root)
+		if err != nil {
+			log.Warnf("Error creating folders: %v", err)
+			return false
+		}
+
+		oldPath := fullPath
+		newPath := filepath.Join(destDir, filename)
+
+		prettyPath := func(path string) string { return filepath.ToSlash(path) }
+
+		if oldPath != newPath {
+			if !cfg.DryRun {
+				err = os.Rename(oldPath, newPath)
+				if err != nil {
+					out := fmt.Sprintf("Error moving %s: %v", filename, err)
+					// Log and send notification
+					log.Error(out)
+					utils.SendNotification(cfg.Notifications, "JDD", out)
+				} else {
+					out := fmt.Sprintf("Moved %s -> %s", prettyPath(oldPath), prettyPath(newPath))
+					// Log and send notification
+					log.Info(out)
+					utils.SendNotification(cfg.Notifications, "JDD", out)
+				}
+			} else {
+				out := fmt.Sprintf("[dry run] Would move %s -> %s", prettyPath(oldPath), prettyPath(newPath))
+				// Log and send notification
+				log.Info(out)
+				utils.SendNotification(cfg.Notifications, "JDD", out)
+			}
+		}
+		return true
+	}
+
+	return false
+}
+
 // initialScan walks the entire directory and ensures Johnny Decimal adherence.
 func initialScan(root string, cfg *config.Config, ex *excluder.Excluder) error {
 	return filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
@@ -253,7 +311,7 @@ func initialScan(root string, cfg *config.Config, ex *excluder.Excluder) error {
 			return nil
 		}
 
-		utils.ProcessFile(path, root, cfg, ex)
+		processFile(path, root, cfg, ex)
 		return nil
 	})
 }
