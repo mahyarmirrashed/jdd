@@ -18,6 +18,8 @@ import (
 	"github.com/mahyarmirrashed/jdd/internal/utils"
 	"github.com/sevlyar/go-daemon"
 	log "github.com/sirupsen/logrus"
+	altsrc "github.com/urfave/cli-altsrc/v3"
+	"github.com/urfave/cli-altsrc/v3/yaml"
 	"github.com/urfave/cli/v3"
 	"gopkg.in/fsnotify.v1"
 )
@@ -28,100 +30,74 @@ var version = "dev"
 func main() {
 	beeep.AppName = "Johnny Decimal Daemon"
 
+	configFile := altsrc.StringSourcer(".jd.yaml")
+
 	app := &cli.Command{
-		Name:    "jdd",
-		Usage:   "Johnny Decimal Daemon",
-		Version: version,
+		Name:                  "jdd",
+		Usage:                 "Johnny Decimal Daemon",
+		Version:               version,
+		EnableShellCompletion: true,
+		Suggest:               true,
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:    "config",
-				Aliases: []string{"c"},
-				Usage:   "path to config file",
-				Sources: cli.EnvVars("JDD_CONFIG"),
-				Value:   ".jd.yaml",
-			},
 			&cli.StringFlag{
 				Name:    "root",
 				Usage:   "root directory to watch",
-				Sources: cli.EnvVars("JDD_ROOT"),
+				Value:   ".",
+				Sources: cli.NewValueSourceChain(yaml.YAML("root", configFile), cli.EnvVar("JDD_ROOT")),
 			},
 			&cli.StringFlag{
 				Name:    "log-level",
 				Usage:   "logging level: debug, info, warn, error",
-				Sources: cli.EnvVars("JDD_LOG_LEVEL"),
+				Value:   "info",
+				Sources: cli.NewValueSourceChain(yaml.YAML("log_level", configFile), cli.EnvVar("JDD_LOG_LEVEL")),
 			},
 			&cli.BoolFlag{
 				Name:    "daemonize",
 				Usage:   "run as daemon",
-				Sources: cli.EnvVars("JDD_DAEMONIZE"),
+				Value:   false,
+				Sources: cli.NewValueSourceChain(yaml.YAML("daemonize", configFile), cli.EnvVar("JDD_DAEMONIZE")),
 			},
 			&cli.BoolFlag{
 				Name:    "dry-run",
 				Usage:   "dry run mode",
-				Sources: cli.EnvVars("JDD_DRY_RUN"),
+				Value:   false,
+				Sources: cli.NewValueSourceChain(yaml.YAML("dry_run", configFile), cli.EnvVar("JDD_DRY_RUN")),
 			},
 			&cli.StringSliceFlag{
 				Name:    "exclude",
 				Usage:   "glob patterns to exclude (repeat or comma-separated)",
-				Sources: cli.EnvVars("JDD_EXCLUDE"),
+				Value:   []string{},
+				Sources: cli.NewValueSourceChain(yaml.YAML("exclude", configFile), cli.EnvVar("JDD_EXCLUDE")),
 			},
 			&cli.DurationFlag{
 				Name:    "delay",
 				Usage:   "processing delay on files",
-				Sources: cli.EnvVars("JDD_DELAY"),
 				Value:   0,
+				Sources: cli.NewValueSourceChain(yaml.YAML("delay", configFile), cli.EnvVar("JDD_DELAY")),
 			},
 			&cli.BoolFlag{
 				Name:    "notifications",
 				Usage:   "send desktop notifications",
-				Sources: cli.EnvVars("JDD_NOTIFICATIONS"),
+				Value:   false,
+				Sources: cli.NewValueSourceChain(yaml.YAML("notifications", configFile), cli.EnvVar("JDD_NOTIFICATIONS")),
 			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
-			var cfg *config.Config
-			configPath := cmd.String("config")
-
-			// Only load config if the file exists
-			if _, err := os.Stat(configPath); err == nil {
-				cfg, err = config.LoadConfig(configPath)
-				if err != nil {
-					log.Fatalf("Failed to load config: %v", err)
-				}
-			} else {
-				// Use defaults if no config file
-				cfg = &config.Config{
-					Root:     ".",
-					LogLevel: "info",
-				}
+			cfg := &config.Config{
+				Root:          cmd.String("root"),
+				LogLevel:      strings.ToLower(cmd.String("log-level")),
+				Daemonize:     cmd.Bool("daemonize"),
+				DryRun:        cmd.Bool("dry-run"),
+				Delay:         cmd.Duration("delay"),
+				Notifications: cmd.Bool("notifications"),
 			}
 
-			// Override config with flags if set
-			if cmd.IsSet("root") {
-				cfg.Root = cmd.String("root")
+			excludes := cmd.StringSlice("exclude")
+			var mergedExclude []string
+			for _, e := range excludes {
+				mergedExclude = append(mergedExclude, strings.Split(e, ",")...)
 			}
-			if cmd.IsSet("log-level") {
-				cfg.LogLevel = cmd.String("log-level")
-			}
-			if cmd.IsSet("daemonize") {
-				cfg.Daemonize = cmd.Bool("daemonize")
-			}
-			if cmd.IsSet("dry-run") {
-				cfg.DryRun = cmd.Bool("dry-run")
-			}
-			if cmd.IsSet("exclude") {
-				exclude := cmd.StringSlice("exclude")
-				var merged []string
-				for _, e := range exclude {
-					merged = append(merged, strings.Split(e, ",")...)
-				}
-				cfg.Exclude = merged
-			}
-			if cmd.IsSet("delay") {
-				cfg.Delay = cmd.Duration("delay")
-			}
-			if cmd.IsSet("notifications") {
-				cfg.Notifications = cmd.Bool("notifications")
-			}
+			cfg.Exclude = mergedExclude
 
 			// Set log level from config
 			switch cfg.LogLevel {
@@ -136,6 +112,9 @@ func main() {
 			default:
 				log.SetLevel(log.InfoLevel)
 			}
+
+			// Display configuration
+			log.Debugf("Config set as: %+v", cfg)
 
 			// Only daemonize if config says so
 			if cfg.Daemonize {
