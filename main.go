@@ -126,6 +126,9 @@ func main() {
 				log.SetLevel(log.InfoLevel)
 			}
 
+			// Log project version at startup
+			log.Infof("Johnny Decimal Daemon version: %s", version)
+
 			// Display configuration
 			log.Debugf("Config set as: %+v", cfg)
 
