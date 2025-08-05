@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -27,9 +28,21 @@ import (
 // Set at build time: go build -ldflags "-X main.version=1.2.3"
 var version = "dev"
 
-func main() {
-	beeep.AppName = "Johnny Decimal Daemon"
+func init() {
+	// Configure logger to include timestamp and caller (file:line)
+	log.SetFormatter(&log.TextFormatter{
+		FullTimestamp: true,
+		CallerPrettyfier: func(f *runtime.Frame) (string, string) {
+			return "", fmt.Sprintf("%s:%d", filepath.Base(f.File), f.Line)
+		},
+	})
+	log.SetReportCaller(true)
 
+	// Set app name
+	beeep.AppName = "Johnny Decimal Daemon"
+}
+
+func main() {
 	configFile := altsrc.StringSourcer(".jd.yaml")
 
 	app := &cli.Command{
