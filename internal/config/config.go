@@ -14,3 +14,5 @@ type Config struct {
 	Delay         time.Duration // Time before before processing files
 	Notifications bool          // If true, send desktop notifications
 }
+
+const DefaultConfigFilename = ".jd.yaml"

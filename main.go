@@ -43,7 +43,7 @@ func init() {
 }
 
 func main() {
-	configFile := altsrc.StringSourcer(".jd.yaml")
+	configFile := altsrc.StringSourcer(config.DefaultConfigFilename)
 
 	app := &cli.Command{
 		Name:                  "jdd",
