@@ -37,13 +37,13 @@ func init() {
 		},
 	})
 	log.SetReportCaller(true)
-
-	// Set app name
-	beeep.AppName = "Johnny Decimal Daemon"
 }
 
 func main() {
 	configFile := altsrc.StringSourcer(config.DefaultConfigFilename)
+
+	// Set app name
+	beeep.AppName = "Johnny Decimal Daemon"
 
 	app := &cli.Command{
 		Name:                  "jdd",
