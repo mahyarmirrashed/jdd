@@ -34,7 +34,7 @@ func init() {
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("Johnny Decimal Daemon Configurator")
+	w := a.NewWindow("Johnny Decimal Daemon")
 	w.SetIcon(iconResource)
 	w.Resize(fyne.NewSize(400, 500))
 
