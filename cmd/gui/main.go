@@ -16,7 +16,10 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 	"github.com/mahyarmirrashed/jdd/internal/config"
+	"github.com/mahyarmirrashed/jdd/internal/utils"
 )
+
+var iconResource = fyne.NewStaticResource("icon.png", utils.Icon)
 
 func init() {
 	// Configure logger to include timestamp and caller (file:line)
@@ -32,6 +35,7 @@ func init() {
 func main() {
 	a := app.New()
 	w := a.NewWindow("Johnny Decimal Daemon Configurator")
+	w.SetIcon(iconResource)
 	w.Resize(fyne.NewSize(400, 500))
 
 	rootEntry := widget.NewEntry()
