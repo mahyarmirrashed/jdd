@@ -10,8 +10,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-//go:embed logo.png
 var icon []byte
+//go:embed icon.png
 
 // ExpandTilde will resolve to the correct location on disk.
 func ExpandTilde(path string) string {
