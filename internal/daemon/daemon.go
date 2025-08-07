@@ -116,6 +116,16 @@ func processFile(fullPath string, root string, cfg *config.Config, ex *excluder.
 		return false
 	}
 
+	info, err := os.Stat(fullPath)
+	if err != nil {
+		log.Warnf("Failed to stat path %s: %v", fullPath, err)
+		return false
+	}
+	if info.IsDir() {
+		log.Infof("Skipping directory: %s", fullPath)
+		return false
+	}
+
 	if jd.JohnnyDecimalFilePattern.MatchString(filename) {
 		jdObj, err := jd.Parse(filename)
 		if err != nil {
