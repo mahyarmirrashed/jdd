@@ -1,11 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -15,37 +16,25 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
+
 	"github.com/mahyarmirrashed/jdd/internal/config"
+	"github.com/mahyarmirrashed/jdd/internal/daemon"
 	"github.com/mahyarmirrashed/jdd/internal/utils"
 )
 
 var iconResource = fyne.NewStaticResource("icon.png", utils.Icon)
 
-func init() {
-	// Configure logger to include timestamp and caller (file:line)
-	log.SetFormatter(&log.TextFormatter{
-		FullTimestamp: true,
-		CallerPrettyfier: func(f *runtime.Frame) (string, string) {
-			return "", fmt.Sprintf("%s:%d", filepath.Base(f.File), f.Line)
-		},
-	})
-	log.SetReportCaller(true)
-}
-
 func main() {
 	a := app.New()
 	w := a.NewWindow("Johnny Decimal Daemon")
 	w.SetIcon(iconResource)
-	w.Resize(fyne.NewSize(400, 500))
+	w.Resize(fyne.NewSize(400, 400))
 
 	rootEntry := widget.NewEntry()
-	logLevelEntry := widget.NewEntry()
 	excludePatterns := widget.NewMultiLineEntry()
 	delayEntry := widget.NewEntry()
-	dryRunCheck := widget.NewCheck("Dry Run Mode", nil)
 	notificationsCheck := widget.NewCheck("Enable Notifications", nil)
-
-	daemonExecutable := "jdd"
+	toggleBtn := widget.NewButton("Start Daemon", nil)
 
 	homeDir, _ := os.UserHomeDir()
 	cfgDir := homeDir
@@ -67,41 +56,102 @@ func main() {
 
 	// Populate fields from config
 	rootEntry.SetText(cfg.Root)
-	logLevelEntry.SetText(cfg.LogLevel)
 	excludePatterns.SetText(strings.Join(cfg.Exclude, "\n"))
-	dryRunCheck.SetChecked(cfg.DryRun)
 	delayEntry.SetText(cfg.Delay.String())
 	notificationsCheck.SetChecked(cfg.Notifications)
 
-	// Create daemon controller
-	daemonCtrl := NewDaemonController()
+	var (
+		daemonCtx     context.Context
+		daemonCancel  context.CancelFunc
+		daemonMu      sync.Mutex
+		daemonRunning bool
+	)
 
-	// Create toggle button
-	toggleBtn := widget.NewButton("Start Daemon", nil)
+	startDaemon := func() error {
+		daemonMu.Lock()
+		defer daemonMu.Unlock()
+
+		if daemonRunning {
+			return nil // already running
+		}
+
+		daemonCtx, daemonCancel = context.WithCancel(context.Background())
+
+		fyne.CurrentApp().SendNotification(&fyne.Notification{
+			Title:   "Johnny Decimal Daemon",
+			Content: "Daemon started.",
+		})
+
+		go func() {
+			err := daemon.RunDaemon(daemonCtx, cfg)
+
+			if err != nil && err != context.Canceled {
+				log.Errorf("Daemon error: %v", err)
+
+				fyne.CurrentApp().SendNotification(&fyne.Notification{
+					Title:   "Johnny Decimal Daemon",
+					Content: fmt.Sprintf("Daemon error: %v", err),
+				})
+			}
+
+			daemonMu.Lock()
+			daemonRunning = false
+			daemonMu.Unlock()
+
+			fyne.CurrentApp().SendNotification(&fyne.Notification{
+				Title:   "Johnny Decimal Daemon",
+				Content: "Daemon stopped.",
+			})
+
+			fyne.Do(func() {
+				updateToggleButton(toggleBtn, false)
+			})
+		}()
+
+		daemonRunning = true
+
+		return nil
+	}
+
+	stopDaemon := func() error {
+		daemonMu.Lock()
+		defer daemonMu.Unlock()
+
+		if !daemonRunning {
+			return nil
+		}
+		if daemonCancel != nil {
+			daemonCancel()
+		}
+		daemonRunning = false
+		return nil
+	}
+
+	toggleDaemon := func() error {
+		daemonMu.Lock()
+		running := daemonRunning
+		daemonMu.Unlock()
+
+		if running {
+			return stopDaemon()
+		}
+		return startDaemon()
+	}
+
 	toggleBtn.OnTapped = func() {
-		err := daemonCtrl.Toggle(daemonExecutable, cfgDir)
+		err := toggleDaemon()
 		if err != nil {
 			dialog.ShowError(fmt.Errorf("daemon control failed: %v", err), w)
 			return
 		}
-		updateToggleButton(toggleBtn, daemonCtrl)
-	}
 
-	daemonCtrl.onExit = func() {
-		fyne.Do(func() {
-			updateToggleButton(toggleBtn, daemonCtrl)
-		})
+		daemonMu.Lock()
+		running := daemonRunning
+		daemonMu.Unlock()
+		updateToggleButton(toggleBtn, running)
 	}
 
 	saveBtn := widget.NewButton("Save Configuration", func() {
-		logLevel := strings.ToLower(strings.TrimSpace(logLevelEntry.Text))
-		switch logLevel {
-		case "debug", "info", "warn", "error":
-		default:
-			dialog.ShowError(fmt.Errorf("invalid log level: %s", logLevel), w)
-			return
-		}
-
 		parsedDelay, err := time.ParseDuration(strings.TrimSpace(delayEntry.Text))
 		if err != nil {
 			dialog.ShowError(fmt.Errorf("invalid delay duration: %v", err), w)
@@ -110,9 +160,9 @@ func main() {
 
 		newCfg := &config.Config{
 			Root:          strings.TrimSpace(rootEntry.Text),
-			LogLevel:      logLevel,
+			LogLevel:      "info",
 			Exclude:       parseExcludePatterns(excludePatterns.Text),
-			DryRun:        dryRunCheck.Checked,
+			DryRun:        false,
 			Daemonize:     false,
 			Delay:         parsedDelay,
 			Notifications: notificationsCheck.Checked,
@@ -124,30 +174,28 @@ func main() {
 			return
 		}
 
-		// If daemon running, restart it to pick up new config
-		if daemonCtrl.IsRunning() {
-			err = daemonCtrl.Stop()
-			if err != nil {
+		cfg = newCfg
+
+		daemonMu.Lock()
+		running := daemonRunning
+		daemonMu.Unlock()
+		if running {
+			if err := stopDaemon(); err != nil {
 				dialog.ShowError(fmt.Errorf("failed to stop daemon for restart: %v", err), w)
 				return
 			}
-			err = daemonCtrl.Start(daemonExecutable, cfgDir)
-			if err != nil {
+			if err := startDaemon(); err != nil {
 				dialog.ShowError(fmt.Errorf("failed to restart daemon: %v", err), w)
 				return
 			}
-		} else {
 		}
 
-		updateToggleButton(toggleBtn, daemonCtrl)
+		updateToggleButton(toggleBtn, running)
 	})
 
 	form := container.NewVBox(
 		widget.NewLabelWithStyle("Root Directory to Watch", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		rootEntry,
-
-		widget.NewLabelWithStyle("Log Level (debug, info, warn, error)", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
-		logLevelEntry,
 
 		widget.NewLabelWithStyle("Exclude Patterns (one per line)", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		excludePatterns,
@@ -155,10 +203,7 @@ func main() {
 		widget.NewLabelWithStyle("Processing Delay (e.g., 3s, 500ms)", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		delayEntry,
 
-		container.NewHBox(
-			dryRunCheck,
-			notificationsCheck,
-		),
+		notificationsCheck,
 
 		container.NewGridWithColumns(2,
 			saveBtn,
@@ -172,21 +217,18 @@ func main() {
 
 	w.SetContent(content)
 
+	// Ensure daemon is stopped on app exit
 	a.Lifecycle().SetOnStopped(func() {
-		err := daemonCtrl.Stop()
-		if err != nil {
-			println("Error stopping daemon on app exit:", err.Error())
-		}
+		_ = stopDaemon()
 	})
 
-	updateToggleButton(toggleBtn, daemonCtrl)
+	updateToggleButton(toggleBtn, false)
 
 	w.ShowAndRun()
 }
 
-// updateToggleButton updates the toggle button label and status label color based on daemon state
-func updateToggleButton(btn *widget.Button, ctrl *DaemonController) {
-	if ctrl.IsRunning() {
+func updateToggleButton(btn *widget.Button, running bool) {
+	if running {
 		btn.SetText("Stop Daemon")
 	} else {
 		btn.SetText("Start Daemon")
