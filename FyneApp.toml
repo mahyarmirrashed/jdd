@@ -1,0 +1,15 @@
+[Details]
+  Icon = "internal/utils/icon.png"
+  Name = "Johnny Decimal Daemon"
+  ID = "com.mahyarmirrashed.jdd"
+  Version = "0.0.0"
+  Build = 0
+
+[LinuxAndBSD]
+  GenericName = "Johnny Decimal Daemon"
+  Categories = ["Utility"]
+  Comment = "Keep your life organized with Johnny Decimal"
+  Keywords = ["desktop", "utility", "jdd"]
+
+[Migrations]
+  fyneDo = true
