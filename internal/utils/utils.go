@@ -10,8 +10,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var icon []byte
 //go:embed icon.png
+var Icon []byte
 
 // ExpandTilde will resolve to the correct location on disk.
 func ExpandTilde(path string) string {
@@ -25,7 +25,7 @@ func ExpandTilde(path string) string {
 
 func SendNotification(enabled bool, title string, message string) {
 	if enabled {
-		if err := beeep.Notify(title, message, icon); err != nil {
+		if err := beeep.Notify(title, message, Icon); err != nil {
 			log.Warnf("Notification failed: %v", err)
 		}
 	}
